@@ -1,132 +1,212 @@
+/*
+See all ramen images in the div with the id of 
+ramen-menu. When the page loads, request the 
+data from the server to get all the ramen objects. 
+Then, display the image for each of the ramen 
+using an an img tag inside the #ramen-menu div. /X
+*/
 // write your code here
 
-function getRamens() {
-    fetch("http://localhost:3000/ramens")
-        .then(res => res.json())
-        .then(ramens => {
-            ramens.forEach(ramen => renderRamen(ramen))
-            displayRamen(ramens[0])
-        })
-}
+//locate element to appent to 
+//make fetch request
+//for each obj in obj array render image in ramen div
 
-function addFormListener() {
-    const newRamenForm = document.getElementById("new-ramen")
-    newRamenForm.addEventListener("submit", (e) => submitNewRamen(e))
-}
+const ramenMenu = document.querySelector("#ramen-menu")
+const ramenInfo = document.querySelector("#ramen-detail")
+const ramenForm = document.querySelector("#ramen-rating")
+const ramenImg = document.querySelector("#ramen-img")
+const newRamenForm = document.querySelector("#new-ramen")
 
-function renderRamen(ramen) {
-    const ramenMenu = document.getElementById("ramen-menu")
-    const ramenItem = document.createElement("div")
-    const ramenImg = document.createElement("img")
-    const deleteBtn = document.createElement("button")
-    
+
+fetch("http://localhost:3000/ramens")
+.then(resp => resp.json())
+.then(ramenObjs => {
+    console.log(ramenObjs)
+    ramenObjs.forEach(addRamenToMenu)
+})
+
+
+function addRamenToMenu(ramen){
+    let ramenImg = document.createElement("img")
     ramenImg.src = ramen.image
-    deleteBtn.textContent = "x"
-    ramenItem.className = "ramen-item"
-
-    ramenImg.addEventListener("click", () => displayRamen(ramen))
-    deleteBtn.addEventListener("click", () => deleteRamen(ramen, ramenItem))
-
-    ramenItem.append(ramenImg)
-    ramenItem.append(deleteBtn)
-    ramenMenu.append(ramenItem)
+    ramenImg.id = "ramen-img"
+    ramenImg.dataset.id = ramen.id
+    ramenMenu.append(ramenImg)
 }
 
-function displayRamen(ramen) {
-    const displayImage = document.getElementById("detail-image")
-    const displayName = document.getElementById("name")
-    const displayRestaurant = document.getElementById("restaurant")
-    const rating = document.getElementById("rating-display")
-    const comment = document.getElementById("comment-display")
-    const editForm = document.getElementById("edit-ramen")
+/*
+Click on an image from the #ramen-menu div and see 
+all the info about that ramen displayed inside the /X
+#ramen-detail div, as well as the current rating 
+and comment for the ramen displayed in the #ramen-rating 
+form. /X
+*/
 
-    displayImage.src = ramen.image
-    displayName.textContent = ramen.name
-    displayRestaurant.textContent = ramen.restaurant
-    rating.textContent = `${ramen.rating}`
-    comment.textContent = ramen.comment
+//target elements to be edited when image clicked
+//add event listener for image click - get id from image make
+//fetch request with id for info
+//change HTML - add fetched OBJ info
 
-    console.log(rating.textContent + " " + comment.textContent)
+/* <img class="detail-image" src="./assets/image-placeholder.jpg" alt="Insert Name Here" />
+      <h2 class="name">Insert Name Here</h2>
+      <h3 class="restaurant">Insert Restaurant Here</h3> */
 
-    editForm.addEventListener("submit", (e) => editDisplayedRamen(e, ramen, rating, comment))
-}
 
-function submitNewRamen(e) {
-    e.preventDefault()
-    const ramenObj = {
-        name: e.target.name.value,
-        restaurant: e.target.restaurant.value,
-        image: e.target.image.value,
-        rating: e.target.rating.value,
-        comment: e.target["new-comment"].value,
+
+ramenMenu.addEventListener("click", function(event){
+    if(event.target.matches("#ramen-img")){
+        let id = event.target.dataset.id
+        fetch(`http://localhost:3000/ramens/${id}`)
+        .then(resp => resp.json())
+        .then(ramenObj => {
+            console.log(ramenObj)
+            addRamenImg(ramenObj)
+            addRamenForm(ramenObj)
+        })
     }
+})
 
-    fetch("http://localhost:3000/ramens", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(ramenObj)
-    })
-        .then(res => res.json())
-        .then(ramen => renderRamen(ramen))
-
-    
-
-    e.target.reset()
+function addRamenImg(ramenObj){
+    //I understand the security drawbacks of using innerHTML but chose this method 
+    //because it's the fastest. given more time, if security were a concern I would 
+    //create new elements and set them to equal keys from the obj. 
+    ramenInfo.innerHTML = `
+      <img class="detail-image" src=${ramenObj.image} alt=${ramenObj.name} />
+      <h2 class="name">${ramenObj.name}</h2>
+      <h3 class="restaurant">${ramenObj.restaurant}</h3>
+    `
 }
 
-function editDisplayedRamen(e, ramen, rating, comment) {
-    e.preventDefault()
-    
-    const newRating = e.target.rating.value
-    const newComment = e.target["new-comment"].value
-
-    fetch(`http://localhost:3000/ramens/${ramen.id}`, {
-        method: 'PATCH',
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            rating: newRating,
-            comment: newComment
-        })
-    })
-        .then(() => {
-            rating.textContent = `${newRating}`
-            comment.textContent = newComment
-        })
-
-
-    console.log("old:" + rating.textContent + " " + comment.textContent)
-    console.log("new:" + newRating + " " + newComment)
+function addRamenForm(ramenObj){
+    ramenForm.innerHTML = `
+    <label for="rating">Rating: </label>
+    <input type="text" name="rating" id="rating" value=${ramenObj.rating} />
+    <label for="comment">Comment: </label>
+    <textarea name="comment" id="comment">${ramenObj.comment}</textarea>
+    <input type="submit" value="Update" />
+    `
+    ramenForm.dataset.id = ramenObj.id
 }
 
-function deleteRamen(ramen, ramenItem) {
-    const rating = document.getElementById("rating-display")
-    const comment = document.getElementById("comment-display")
+/* Update the rating and comment for a ramen. When the #ramen-rating form 
+is submitted, it should update the value on the server. Changes should /X
+also be reflected on the frontend (you can test this by submitting the form; 
+clicking a different ramen image; then clicking the image for the ramen you 
+updated - you should see the rating and comment that you submitted previously). /X
+*/
 
-    const placeholderRamen = {
-        image: "../assets/image-placeholder.jpg",
-        name: `${ramen.name} deleted!`,
-        restaurant: "Click a ramen to show its details",
-        rating: "",
-        comment: ""
+//target element to add event listener to 
+//add event listener on submit 
+//create new OBJ with user submissions 
+//create patch request with stringified new obj as patch body 
+
+ramenForm.addEventListener("submit", function(event){
+    event.preventDefault()
+    const newRating = {
+        rating: event.target.rating.value,
+        comment: event.target.comment.value
     }
+    console.log(newRating)
+    let id = ramenForm.dataset.id
 
-    rating.textContent = ""
-    comment.textContent = ""
-    
-    fetch(`http://localhost:3000/ramens/${ramen.id}`, {
-        method: 'DELETE'
+    fetch(`http://localhost:3000/ramens/${id}`, {
+        method: "PATCH",
+        headers: {
+            "Content-Type":"application/json"
+        },
+        body: JSON.stringify(newRating)
     })
-        .then(ramenItem.remove())
-        .then(() => {
-            rating.textContent = ""
-            comment.textContent = ""
-            displayRamen(placeholderRamen)
-        })
-}
+    .then(resp => resp.json())
+    .then(newRating => addRamenForm(newRating))
+})
 
-getRamens()
-addFormListener()
+//debugger
+
+
+//------Trying adavanced deliverables----//
+
+/*See the details for the first ramen as soon as the page loads 
+(without clicking on an image) /X
+*/
+
+document.addEventListener('DOMContentLoaded', (event) => {
+        fetch(`http://localhost:3000/ramens/1`)
+        .then(resp => resp.json())
+        .then(ramenObj => {
+            console.log(ramenObj)
+            addRamenImg(ramenObj)
+            addRamenForm(ramenObj)
+        })
+});
+
+/*
+Create a new ramen. You can add this form to the index.html 
+file to get started: /X
+*/
+
+//target element to add event listener
+//create obj with user input 
+//make post request with stringified user obj as body
+//render new ramen on page 
+
+
+newRamenForm.addEventListener("submit", function(event) {
+    event.preventDefault()
+    newRamen = {
+        name: event.target.name.value,
+        restaurant: event.target.restaurant.value,
+        image: event.target.image.value,
+        comment: event.target['new-comment'].value,
+        rating: event.target.rating.value,
+    }
+    //debugger
+    let id = parseInt(document.querySelector("#ramen-rating").dataset.id)
+    console.log(newRamen)
+    console.log(id)
+    addRamenToMenu(newRamen)
+    addRamenImg(newRamen)
+    addRamenForm(newRamen)
+    fetch('http://localhost:3000/ramens', { 
+        method: 'POST',
+        headers: {
+            "Content-Type":"application/json"
+        },
+        body: JSON.stringify(newRamen)
+    })
+    .then(resp => resp.json())
+    .then(newRamen => {
+        console.log(newRamen)
+    })
+    event.target.reset()
+})
+
+/*Delete a ramen (you can add a "delete" button if you'd like, 
+or use an existing element to handle the delete action). 
+The ramen should be removed from the ramen-menu div, and should 
+not be displayed in the ramen-detail div. */
+
+//figure out where to add delete button 
+//create delete functions to remove form front end
+//make fetch request with DELETE method to delete from back end
+
+const dltButton = document.createElement("button")
+dltButton.id = "dlt-btn"
+dltButton.innerText = "Delete Ramen"
+document.body.append(dltButton)
+//debugger
+
+dltButton.addEventListener("click", (event) => {
+    event.target.dataset.id = ramenForm.dataset.id
+    let id = dltButton.dataset.id
+    //console.log(dltButton.dataset.id)
+    fetch(`http://localhost:3000/ramens/${id}`, {
+        method: "DELETE"
+    })
+    ramenInfo.remove()
+    ramenForm.remove()
+    const ramenImgs = document.querySelectorAll("#ramen-img")
+    console.log("ramenIMGs:", ramenImgs)
+    ramenImgs.forEach((img) => {
+        if(img.dataset.id == id) img.remove()
+    })
+})
